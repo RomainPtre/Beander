@@ -220,9 +220,9 @@ if st.button('Go fetch, Beander!'):
 
     ## Agglomerative output
     with tab2:
-        st.markdown('👷🏻‍♂️ In construction')
+        st.markdown('👷🏻‍♂️ In construction, come later')
 
-    ## Euclidean distances output 
+    ## Euclidean distances output
     with tab3:
         st.markdown('👷🏻‍♂️ In construction')    
     st.markdown('---')
