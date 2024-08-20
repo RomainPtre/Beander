@@ -94,23 +94,23 @@ Here you can create your own coffee tasting profile. We will then predict which 
 ## Input sliders
 # Aroma
 st.subheader('🍫 Aroma')
-aroma_values = st.slider('Aroma', 0.00, 10.00, label_visibility='collapsed')
+aroma_values = st.slider('Aroma', data['Aroma'].min(), data['Aroma'].max(), label_visibility='collapsed', format ='')
 
 # Aftertaste
 st.subheader('⏱ Aftertaste')
-aftertaste_values = st.slider('Aftertaste', 0.00, 10.00, label_visibility='collapsed')
+aftertaste_values = st.slider('Aftertaste', data['Aftertaste'].min(), data['Aftertaste'].max(), label_visibility='collapsed', format='')
 
 # Acidity
 st.subheader('🍋 Acidity')
-acidity_values = st.slider('Acidity', 0.00, 10.00, label_visibility='collapsed', help='Should it tickle a little ?')
+acidity_values = st.slider('Acidity', data['Acidity'].min(), data['Acidity'].max(), label_visibility='collapsed', help='Should it tickle a little ?', format='')
 
 # Body
 st.subheader('💪 Body')
-body_values = st.slider('Body', 0.00, 10.00, label_visibility='collapsed')
+body_values = st.slider('Body', data['Body'].min(), data['Body'].max(), label_visibility='collapsed', format='')
 
 # Sweetness
 st.subheader('🧁 Sweetness')
-sweetness_values = st.slider('Sweetness', 0.00, 10.00, label_visibility='collapsed')
+sweetness_values = st.slider('Sweetness', data['Sweetness'].min(), data['Sweetness'].max(), label_visibility='collapsed', format='')
 
 # Initialize session state variables to persist data across interactions
 if 'df_coffee_reco' not in st.session_state:
@@ -167,7 +167,8 @@ if st.session_state.df_coffee_reco is not None:
         st.plotly_chart(st.session_state.fig_pca)
 
     with col2:
-        st.subheader(f'''Here is a small overview of the results''')
+        st.subheader('''Here are some recommendations''')
+        st.markdown('''🤓 Feel free to play with the filters and column sorting for more results! ''')
         columns_order = ['Owner.1', 'Tasting profile', 'Total.Cup.Points', 'Variety', 'Country.of.Origin', 'Processing.Method', 'altitude_mean_meters', 'Species', 'Farm.Name', 'Region', 'In.Country.Partner', 'Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness', 'Moisture', 'Color']
 
         ## Filters
@@ -196,14 +197,16 @@ if st.session_state.df_coffee_reco is not None:
         if activate_altitude_filter:
             altitude_min = st.session_state.df_coffee_reco['altitude_mean_meters'].min()
             altitude_max = st.session_state.df_coffee_reco['altitude_mean_meters'].max()
-            altitude_filter = st.select_slider('Select the altitude range', value=[altitude_min, altitude_max], options=range(int(altitude_min), int(altitude_max)+1))
+            altitude_filter = st.select_slider('Select the altitude range', value=[altitude_min, altitude_max], 
+                                               options=range(int(altitude_min), int(altitude_max)+1), 
+                                               help='Missing altitudes are labelled 0')
             filtered_df = filtered_df[(filtered_df['altitude_mean_meters'] >= altitude_filter[0]) & 
                                                   (filtered_df['altitude_mean_meters'] <= altitude_filter[1])]
 
         ## OUTPUT FILTERED (or not) DATAFRAME
         # Displaying the filtered dataframe with custom columns
         df_edited = st.data_editor(
-            filtered_df,
+            filtered_df.head(10),
             column_config={
                 'Owner.1': 'Exploitation name',
                 'Total.Cup.Points': st.column_config.ProgressColumn(
