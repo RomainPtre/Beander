@@ -14,7 +14,7 @@ st.set_page_config(
     layout="wide"
 )
 
-DATA = ('C:/Users/romai/Documents/Data_Science_Courses/Fullstack/Jedha_Fullstack_Data_Science/Project/Final/coffee/Coffee_dataset_cleaned_column_and_rows.csv')
+DATA = ('./src/Coffee_dataset_cleaned_column_and_rows.csv')
 
 ### App
 st.title('Welcome to Beander ☕')
