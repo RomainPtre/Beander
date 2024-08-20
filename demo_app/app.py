@@ -89,6 +89,7 @@ if 'df_coffee_reco' not in st.session_state:
 if 'user_pred' not in st.session_state:
     st.session_state.user_pred = None
 
+ #################################################################################
 ### Predicting to which cluster user data belongs to
 ## Submit button to create new row
 if st.button('Go fetch, Beander!'):
@@ -97,7 +98,8 @@ if st.button('Go fetch, Beander!'):
                 'Acidity': acidity_values,
                 'Body': body_values,
                 'Sweetness': sweetness_values}
-    
+
+
     # Adding the user_values to the features dataframe
     user_row = pd.DataFrame([user_row])
     user_row_scaled = scaler.transform(user_row)
@@ -129,100 +131,113 @@ if st.button('Go fetch, Beander!'):
     st.session_state.fig_pca.add_trace(go.Scatter3d(x=df_rest_pca['PC1'], y=df_rest_pca['PC2'], z=df_rest_pca['PC3'], mode='markers', marker=dict(color=df_rest_pca['Cluster'], colorscale='Inferno', cmin=color_range[0], cmax=color_range[1], opacity=0.05)))
     st.session_state.fig_pca.update_layout(showlegend=False, scene=dict(xaxis_title='PC1', yaxis_title='PC2', zaxis_title='PC3'))
 
-# OUTPUT
-# Checking if previous results in cache or not
-if st.session_state.df_coffee_reco is not None:
-    col1, col2 = st.columns([0.4, 0.6], gap='large')
-    with col1:
-        st.subheader(f'''***Your coffee belongs to the cluster*** n. **:red[{st.session_state.user_pred}]**''')
-        st.plotly_chart(st.session_state.fig_pca)
+    # OUTPUT
+    # Checking if previous results in cache or not
+    tab1, tab2, tab3 = st.tabs(['**K-Means**', '**Agglomerative Clustering**', '**Euclidean Distances**'])
 
-    with col2:
-        st.subheader('''Here are some recommendations''')
-        st.markdown('''🤓 Feel free to play with the filters and column sorting for more results! ''')
-        columns_order = ['Owner.1', 'Tasting profile', 'Total.Cup.Points', 'Variety', 'Country.of.Origin', 'Processing.Method', 'altitude_mean_meters', 'Species', 'Farm.Name', 'Region', 'In.Country.Partner', 'Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness', 'Moisture', 'Color']
+    ## K-Means output
+    with tab1:
+        if st.session_state.df_coffee_reco is not None:
+            col1, col2 = st.columns([0.4, 0.6], gap='large')
+            with col1:
+                st.subheader(f'''***Your coffee belongs to the cluster*** n. **:red[{st.session_state.user_pred}]**''')
+                st.plotly_chart(st.session_state.fig_pca)
 
-        ## Filters
-        # Initialize dataframe
-        filtered_df = st.session_state.df_coffee_reco
+            with col2:
+                st.subheader('''Here are some recommendations''')
+                st.markdown('''🤓 Feel free to play with the filters and column sorting for more results! ''')
+                columns_order = ['Owner.1', 'Tasting profile', 'Total.Cup.Points', 'Variety', 'Country.of.Origin', 'Processing.Method', 'altitude_mean_meters', 'Species', 'Farm.Name', 'Region', 'In.Country.Partner', 'Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness', 'Moisture', 'Color']
 
-        # Variety
-        activate_variety_filter = st.checkbox('Filter by variety 🌱')
-        # Updating the dropdown and filtered dataframe
-        if activate_variety_filter:
-            variety_dropdown = st.session_state.df_coffee_reco['Variety'].unique().tolist()
-            variety_filter = st.selectbox('Select the coffee varieties', variety_dropdown, index=None)
-            filtered_df = filtered_df[filtered_df['Variety']==variety_filter]
+                ## Filters
+                # Initialize dataframe
+                filtered_df = st.session_state.df_coffee_reco
 
-        # Process
-        activate_process_filter = st.checkbox('Filter by process 🧪')
-        # Updating the dropdown and filtered dataframe
-        if activate_process_filter:
-            process_dropdown = st.session_state.df_coffee_reco['Processing.Method'].unique().tolist()
-            process_filter = st.selectbox('Select the processing method', process_dropdown, index=None)
-            filtered_df = filtered_df[filtered_df['Processing.Method']==process_filter]
+                # Variety
+                activate_variety_filter = st.checkbox('Filter by variety 🌱')
+                # Updating the dropdown and filtered dataframe
+                if activate_variety_filter:
+                    variety_dropdown = st.session_state.df_coffee_reco['Variety'].unique().tolist()
+                    variety_filter = st.selectbox('Select the coffee varieties', variety_dropdown, index=None)
+                    filtered_df = filtered_df[filtered_df['Variety']==variety_filter]
 
-        # Altitude
-        activate_altitude_filter = st.checkbox('Filter by altitude 🗻')
-        # Updating the dropdown and filtered dataframe
-        if activate_altitude_filter:
-            altitude_min = st.session_state.df_coffee_reco['altitude_mean_meters'].min()
-            altitude_max = st.session_state.df_coffee_reco['altitude_mean_meters'].max()
-            altitude_filter = st.select_slider('Select the altitude range', value=[altitude_min, altitude_max], 
-                                               options=range(int(altitude_min), int(altitude_max)+1), 
-                                               help='Missing altitudes are labelled 0')
-            filtered_df = filtered_df[(filtered_df['altitude_mean_meters'] >= altitude_filter[0]) & 
-                                                  (filtered_df['altitude_mean_meters'] <= altitude_filter[1])]
+                # Process
+                activate_process_filter = st.checkbox('Filter by process 🧪')
+                # Updating the dropdown and filtered dataframe
+                if activate_process_filter:
+                    process_dropdown = st.session_state.df_coffee_reco['Processing.Method'].unique().tolist()
+                    process_filter = st.selectbox('Select the processing method', process_dropdown, index=None)
+                    filtered_df = filtered_df[filtered_df['Processing.Method']==process_filter]
 
-        ## OUTPUT FILTERED (or not) DATAFRAME
-        # Displaying the filtered dataframe with custom columns
-        df_edited = st.data_editor(
-            filtered_df.head(10),
-            column_config={
-                'Owner.1': 'Exploitation name',
-                'Total.Cup.Points': st.column_config.ProgressColumn(
-                    'Coffee rating',
-                    help='How much the coffee was rated by certified tasters',
-                    format='⭐ %.1f',
-                    min_value=0,
-                    max_value=100
-                ),
-                'Tasting profile': st.column_config.BarChartColumn(
-                    '  🍫  ⏱  🍋   💪   🧁',
-                    help='Each bar corresponds to the sliders above (same order)',
-                    y_min=0,
-                    y_max=10.00
-                ),
-                'Country.of.Origin': 'Country',
-                'Processing.Method' : 'Process',
-                'altitude_mean_meters': 'Altitude',
-                'Farm.Name':None,
-                'In.Country.Partner':None,
-                'Aroma':None,
-                'Aftertaste':None,
-                'Acidity':None,
-                'Body':None,
-                'Sweetness':None,
-                'Moisture':st.column_config.NumberColumn(
-                    format='%.2f%%'
+                # Altitude
+                activate_altitude_filter = st.checkbox('Filter by altitude 🗻')
+                # Updating the dropdown and filtered dataframe
+                if activate_altitude_filter:
+                    altitude_min = st.session_state.df_coffee_reco['altitude_mean_meters'].min()
+                    altitude_max = st.session_state.df_coffee_reco['altitude_mean_meters'].max()
+                    altitude_filter = st.select_slider('Select the altitude range', value=[altitude_min, altitude_max], 
+                                                    options=range(int(altitude_min), int(altitude_max)+1), 
+                                                    help='Missing altitudes are labelled 0')
+                    filtered_df = filtered_df[(filtered_df['altitude_mean_meters'] >= altitude_filter[0]) & 
+                                                        (filtered_df['altitude_mean_meters'] <= altitude_filter[1])]
+
+                ## OUTPUT FILTERED (or not) DATAFRAME
+                # Displaying the filtered dataframe with custom columns
+                df_edited = st.data_editor(
+                    filtered_df.head(10),
+                    column_config={
+                        'Owner.1': 'Exploitation name',
+                        'Total.Cup.Points': st.column_config.ProgressColumn(
+                            'Coffee rating',
+                            help='How much the coffee was rated by certified tasters',
+                            format='⭐ %.1f',
+                            min_value=0,
+                            max_value=100
+                        ),
+                        'Tasting profile': st.column_config.BarChartColumn(
+                            '  🍫  ⏱  🍋   💪   🧁',
+                            help='Each bar corresponds to the sliders above (same order)',
+                            y_min=0,
+                            y_max=10.00
+                        ),
+                        'Country.of.Origin': 'Country',
+                        'Processing.Method' : 'Process',
+                        'altitude_mean_meters': 'Altitude',
+                        'Farm.Name':None,
+                        'In.Country.Partner':None,
+                        'Aroma':None,
+                        'Aftertaste':None,
+                        'Acidity':None,
+                        'Body':None,
+                        'Sweetness':None,
+                        'Moisture':st.column_config.NumberColumn(
+                            format='%.2f%%'
+                        )
+                    },
+                    hide_index=True, key='broader_df', column_order=columns_order
                 )
-            },
-            hide_index=True, key='broader_df', column_order=columns_order
-        )
+        else:
+            st.write('Press the button to see recommendations')
 
+    ## Agglomerative output
+    with tab2:
+        st.markdown('👷🏻‍♂️ In construction')
+
+    ## Euclidean distances output
+    with tab3:
+        st.markdown('👷🏻‍♂️ In construction')    
+    st.markdown('---')
+
+## The if st.button loop is closing here
 else:
     st.write('Press the button to see recommendations')
 
-
-st.markdown('---')
-
+############################################################
 ## Highlighting basic infos
 st.header('Here are some basic infos you may need')
 
 col1, col2 = st.columns([0.5, 0.5], gap='large')
 with col1:
-    st.subheader('''🏆 Your roaster deserves better than just a bag of quakers
-    ''')
+    st.subheader('''🏆 Your roaster deserves better than just a bag of quakers''')
     st.markdown('***Beander got you covered with only top-notch coffee beans.***')
     data_cup = data.groupby('Variety')['Total.Cup.Points'].mean()
     fig_cup = px.bar(data_cup)
@@ -234,8 +249,7 @@ with col1:
     st.plotly_chart(fig_cup)
 
 with col2:
-    st.subheader('''🏆 this is test
-    ''')
+    st.subheader('''🏆 this is test''')
     acid = px.histogram(data, x='Acidity')
     st.plotly_chart(acid)
 
