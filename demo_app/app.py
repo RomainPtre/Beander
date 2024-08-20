@@ -222,7 +222,7 @@ if st.button('Go fetch, Beander!'):
     with tab2:
         st.markdown('👷🏻‍♂️ In construction')
 
-    ## Euclidean distances output
+    ## Euclidean distances output 
     with tab3:
         st.markdown('👷🏻‍♂️ In construction')    
     st.markdown('---')
