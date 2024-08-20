@@ -161,7 +161,7 @@ if st.button('Go fetch, Beander!'):
 # OUTPUT
 # Checking if previous results in cache or not
 if st.session_state.df_coffee_reco is not None:
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([0.4, 0.6], gap='large')
     with col1:
         st.subheader(f'''***Your coffee belongs to the cluster*** n. **:red[{st.session_state.user_pred}]**''')
         st.plotly_chart(st.session_state.fig_pca)
@@ -175,24 +175,30 @@ if st.session_state.df_coffee_reco is not None:
         filtered_df = st.session_state.df_coffee_reco
 
         # Variety
-        activate_variety_filter = st.checkbox('Enable variety filter')
+        activate_variety_filter = st.checkbox('Filter by variety 🌱')
         # Updating the dropdown and filtered dataframe
         if activate_variety_filter:
             variety_dropdown = st.session_state.df_coffee_reco['Variety'].unique().tolist()
             variety_filter = st.selectbox('Select the coffee varieties', variety_dropdown, index=None)
             filtered_df = filtered_df[filtered_df['Variety']==variety_filter]
-        # else:
-        #     filtered_df = st.session_state.df_coffee_reco
 
         # Process
-        activate_process_filter = st.checkbox('Enable process filter')
+        activate_process_filter = st.checkbox('Filter by process 🧪')
         # Updating the dropdown and filtered dataframe
         if activate_process_filter:
             process_dropdown = st.session_state.df_coffee_reco['Processing.Method'].unique().tolist()
             process_filter = st.selectbox('Select the processing method', process_dropdown, index=None)
             filtered_df = filtered_df[filtered_df['Processing.Method']==process_filter]
-        # else:
-        #     filtered_df = st.session_state.df_coffee_reco
+
+        # Altitude
+        activate_altitude_filter = st.checkbox('Filter by altitude 🗻')
+        # Updating the dropdown and filtered dataframe
+        if activate_altitude_filter:
+            altitude_min = st.session_state.df_coffee_reco['altitude_mean_meters'].min()
+            altitude_max = st.session_state.df_coffee_reco['altitude_mean_meters'].max()
+            altitude_filter = st.select_slider('Select the altitude range', value=[altitude_min, altitude_max], options=range(int(altitude_min), int(altitude_max)+1))
+            filtered_df = filtered_df[(filtered_df['altitude_mean_meters'] >= altitude_filter[0]) & 
+                                                  (filtered_df['altitude_mean_meters'] <= altitude_filter[1])]
 
         ## OUTPUT FILTERED (or not) DATAFRAME
         # Displaying the filtered dataframe with custom columns
