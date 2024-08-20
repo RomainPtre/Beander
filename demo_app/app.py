@@ -16,55 +16,23 @@ st.set_page_config(
 
 DATA = ('./src/Coffee_dataset_cleaned_column_and_rows.csv')
 
-### App
+### Headers
 st.title('Welcome to Beander ☕')
 st.header('Beander, the coffee matchmaker.')
-st.markdown('''Brought to you by Pietro, Isa & Romain 🌱''')
+st.markdown('''***Brought to you by Pietro, Isa & Romain*** 🌱''')
 
-with st.expander("🤓 Here is a fun video to understand coffee tasting:"):
-    st.video("https://www.youtube.com/watch?v=IkssYHTSpH4")
+st.markdown('---')
 
-st.markdown("---")
 
+### Loading Dataset in cache
 @st.cache_data
 def load_data():
     data = pd.read_csv(DATA, index_col=0)
     return data
 
-st.header("🪄 The backstages")
-st.subheader('''Find all our coffee references here: ''')
-
-data_load_state = st.text('Loading data...')
 data = load_data()
-data_load_state.text("")  # change text from "Loading data..." to "" once the the load_data function has run
-
-## Run the below code if the box is checked ✅
-if st.checkbox('👀 Check the box to see the complete dataset'):
-    st.subheader('The complete coffee dataset')
-    st.write(data)    
-
-## Highlighting basic infos
-st.header('Here are some basic infos you may need')
-st.subheader('''🏆 Your roasting machine deserves better than just a bag of quakers
-''')
-st.markdown('Beander got you covered with only top-notch coffee beans.')
-data_cup = data.groupby('Variety')['Total.Cup.Points'].mean()
-fig_cup = px.bar(data_cup)
-fig_cup.update_layout(
-    title='Average Total Cup Points by Variety',
-    xaxis_title='Variety',
-    yaxis_title='Average Total Cup Points',
-    showlegend=False)
-fig_cup.add_hline(y=80, line_width=3, line_dash='solid', line_color='red')
-st.plotly_chart(fig_cup)
 
 ## DATA SEGMENTATION
-## visualizing the clusters
-st.header('🤖 How it works')
-st.subheader('📈 PCA visualisation based on a K-Means with 8 clusters')
-st.markdown('''These clusters are defined by 5 common coffee descriptors : Aroma, Aftertaste, Acidity, Body, Sweetness. ''')
-
-# Replace with a joblib plus tard
 ## Kmeans pipeline
 numeric_cols = data[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness']]  # Profile aromatique
 scaler = StandardScaler()
@@ -72,6 +40,11 @@ features_scaled = scaler.fit_transform(numeric_cols)
 kmeans = KMeans(n_clusters=8, random_state=42)
 kmeans.fit(features_scaled)
 data['Cluster'] = kmeans.labels_
+
+## Agglomerative clustering pipeline
+
+## Euclidean distance pipeline
+
 
 ## PCA For dataviz
 pca = PCA()
@@ -82,8 +55,6 @@ df_final = pd.concat([df_final, data["Cluster"]], axis=1)
 new_names = {0: 'PC1', 1: 'PC2', 2: 'PC3', 3: 'PC4', 4: 'PC5'}
 df_final = df_final.rename(columns=new_names)
 
-fig = px.scatter_3d(data_frame=df_final, x='PC1', y='PC2', z='PC3', color='Cluster', color_continuous_scale='Inferno')
-st.plotly_chart(fig)
 
 ## Input flavors
 st.header('👾 How do you like your coffee?')
@@ -155,7 +126,7 @@ if st.button('Go fetch, Beander!'):
     color_range = [df_pca['Cluster'].min(), df_pca['Cluster'].max()]
 
     st.session_state.fig_pca = go.Figure(go.Scatter3d(x=df_user_pca['PC1'], y=df_user_pca['PC2'], z=df_user_pca['PC3'], mode='markers', marker=dict(color=df_user_pca['Cluster'], colorscale='Inferno', cmin=color_range[0], cmax=color_range[1], opacity=1)))
-    st.session_state.fig_pca.add_trace(go.Scatter3d(x=df_rest_pca['PC1'], y=df_rest_pca['PC2'], z=df_rest_pca['PC3'], mode='markers', marker=dict(color=df_rest_pca['Cluster'], colorscale='Inferno', cmin=color_range[0], cmax=color_range[1], opacity=0.1)))
+    st.session_state.fig_pca.add_trace(go.Scatter3d(x=df_rest_pca['PC1'], y=df_rest_pca['PC2'], z=df_rest_pca['PC3'], mode='markers', marker=dict(color=df_rest_pca['Cluster'], colorscale='Inferno', cmin=color_range[0], cmax=color_range[1], opacity=0.05)))
     st.session_state.fig_pca.update_layout(showlegend=False, scene=dict(xaxis_title='PC1', yaxis_title='PC2', zaxis_title='PC3'))
 
 # OUTPUT
@@ -241,3 +212,46 @@ if st.session_state.df_coffee_reco is not None:
 
 else:
     st.write('Press the button to see recommendations')
+
+
+st.markdown('---')
+
+## Highlighting basic infos
+st.header('Here are some basic infos you may need')
+
+col1, col2 = st.columns([0.5, 0.5], gap='large')
+with col1:
+    st.subheader('''🏆 Your roaster deserves better than just a bag of quakers
+    ''')
+    st.markdown('***Beander got you covered with only top-notch coffee beans.***')
+    data_cup = data.groupby('Variety')['Total.Cup.Points'].mean()
+    fig_cup = px.bar(data_cup)
+    fig_cup.update_layout(
+        xaxis_title='Variety',
+        yaxis_title='Average Total Cup Points',
+        showlegend=False)
+    fig_cup.add_hline(y=80, line_width=3, line_dash='solid', line_color='red')
+    st.plotly_chart(fig_cup)
+
+with col2:
+    st.subheader('''🏆 this is test
+    ''')
+    acid = px.histogram(data, x='Acidity')
+    st.plotly_chart(acid)
+
+
+st.markdown('---')
+st.header("🪄 Welcome to the backstages")
+
+## visualizing the clusters
+st.header('🤖 How it works')
+st.subheader('📈 PCA visualisation based on a K-Means with 8 clusters')
+st.markdown('''These clusters are defined by 5 common coffee descriptors : Aroma, Aftertaste, Acidity, Body, Sweetness. ''')
+fig = px.scatter_3d(data_frame=df_final, x='PC1', y='PC2', z='PC3', color='Cluster', color_continuous_scale='Inferno')
+st.plotly_chart(fig)
+
+st.subheader('''Find all our coffee references here: ''')
+## Run the below code if the box is checked ✅
+if st.checkbox('👀 Check the box to see the complete dataset'):
+    st.subheader('The complete coffee dataset')
+    st.write(data)    
