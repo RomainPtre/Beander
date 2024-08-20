@@ -9,3 +9,4 @@ This application will recommend coffee farms that produced coffees ressembling t
    Clone the git, go in the demo_app folder, run the app.py through strteamlit `python -m streamlit run app.py` in local, or download the image and run it through containers (to decide later etc)
 5) Next steps
 6) Credits
+Antoine is the best !
