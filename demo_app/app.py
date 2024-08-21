@@ -225,10 +225,10 @@ if st.button('Go fetch, Beander!'):
 
 # OUTPUT
 # Checking if previous results in cache or not
-tab1, tab2, tab3 = st.tabs(['**K-Means**', '**Agglomerative Clustering**', '**Euclidean Distances**'])
+tab1, tab2, tab3 = st.tabs(['**Euclidean Distances**', '**K-Means**', '**Agglomerative Clustering**'])
 
 ## K-Means output
-with tab1:
+with tab2:
     if st.session_state.df_coffee_reco_kmeans is not None:
         col1, col2 = st.columns([0.4, 0.6], gap='large')
         with col1:
@@ -311,9 +311,8 @@ with tab1:
         st.write('Press the button to see recommendations')
 
 ## Agglomerative output
-with tab2:
+with tab3:
     if st.session_state.df_coffee_reco_agg is not None:
-        st.markdown('👷🏻‍♂️ In construction, come later')
         col1, col2 = st.columns([0.4, 0.6], gap='large')
         with col1:
             st.subheader(f'''***Your coffee belongs to the cluster*** n. **:red[{st.session_state.user_pred_agg}]**''')
@@ -395,7 +394,7 @@ with tab2:
         st.write('Press the button to see recommendations')
 
 ## Euclidean distances output
-with tab3:
+with tab1:
     if st.session_state.df_coffee_reco_dist is not None:
         st.subheader(f'''***Here are the :red[10] closest coffees***''')
         st.markdown('''🤓 Feel free to play with the filters and column sorting for more results! ''')
