@@ -16,55 +16,23 @@ st.set_page_config(
 
 DATA = ('./src/Coffee_dataset_cleaned_column_and_rows.csv')
 
-### App
+### Headers
 st.title('Welcome to Beander ☕')
 st.header('Beander, the coffee matchmaker.')
-st.markdown('''Brought to you by Pietro, Isa & Romain 🌱''')
+st.markdown('''***Brought to you by Pietro, Isa & Romain*** 🌱''')
 
-with st.expander("🤓 Here is a fun video to understand coffee tasting:"):
-    st.video("https://www.youtube.com/watch?v=IkssYHTSpH4")
+st.markdown('---')
 
-st.markdown("---")
 
+### Loading Dataset in cache
 @st.cache_data
 def load_data():
     data = pd.read_csv(DATA, index_col=0)
     return data
 
-st.header("🪄 The backstages")
-st.subheader('''Find all our coffee references here: ''')
-
-data_load_state = st.text('Loading data...')
 data = load_data()
-data_load_state.text("")  # change text from "Loading data..." to "" once the the load_data function has run
-
-## Run the below code if the box is checked ✅
-if st.checkbox('👀 Check the box to see the complete dataset'):
-    st.subheader('The complete coffee dataset')
-    st.write(data)    
-
-## Highlighting basic infos
-st.header('Here are some basic infos you may need')
-st.subheader('''🏆 Your roasting machine deserves better than just a bag of quakers
-''')
-st.markdown('Beander got you covered with only top-notch coffee beans.')
-data_cup = data.groupby('Variety')['Total.Cup.Points'].mean()
-fig_cup = px.bar(data_cup)
-fig_cup.update_layout(
-    title='Average Total Cup Points by Variety',
-    xaxis_title='Variety',
-    yaxis_title='Average Total Cup Points',
-    showlegend=False)
-fig_cup.add_hline(y=80, line_width=3, line_dash='solid', line_color='red')
-st.plotly_chart(fig_cup)
 
 ## DATA SEGMENTATION
-## visualizing the clusters
-st.header('🤖 How it works')
-st.subheader('📈 PCA visualisation based on a K-Means with 8 clusters')
-st.markdown('''These clusters are defined by 5 common coffee descriptors : Aroma, Aftertaste, Acidity, Body, Sweetness. ''')
-
-# Replace with a joblib plus tard
 ## Kmeans pipeline
 numeric_cols = data[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness']]  # Profile aromatique
 scaler = StandardScaler()
@@ -72,6 +40,11 @@ features_scaled = scaler.fit_transform(numeric_cols)
 kmeans = KMeans(n_clusters=8, random_state=42)
 kmeans.fit(features_scaled)
 data['Cluster'] = kmeans.labels_
+
+## Agglomerative clustering pipeline
+
+## Euclidean distance pipeline
+
 
 ## PCA For dataviz
 pca = PCA()
@@ -82,8 +55,6 @@ df_final = pd.concat([df_final, data["Cluster"]], axis=1)
 new_names = {0: 'PC1', 1: 'PC2', 2: 'PC3', 3: 'PC4', 4: 'PC5'}
 df_final = df_final.rename(columns=new_names)
 
-fig = px.scatter_3d(data_frame=df_final, x='PC1', y='PC2', z='PC3', color='Cluster', color_continuous_scale='Inferno')
-st.plotly_chart(fig)
 
 ## Input flavors
 st.header('👾 How do you like your coffee?')
@@ -118,6 +89,7 @@ if 'df_coffee_reco' not in st.session_state:
 if 'user_pred' not in st.session_state:
     st.session_state.user_pred = None
 
+ #################################################################################
 ### Predicting to which cluster user data belongs to
 ## Submit button to create new row
 if st.button('Go fetch, Beander!'):
@@ -126,7 +98,8 @@ if st.button('Go fetch, Beander!'):
                 'Acidity': acidity_values,
                 'Body': body_values,
                 'Sweetness': sweetness_values}
-    
+
+
     # Adding the user_values to the features dataframe
     user_row = pd.DataFrame([user_row])
     user_row_scaled = scaler.transform(user_row)
@@ -155,89 +128,142 @@ if st.button('Go fetch, Beander!'):
     color_range = [df_pca['Cluster'].min(), df_pca['Cluster'].max()]
 
     st.session_state.fig_pca = go.Figure(go.Scatter3d(x=df_user_pca['PC1'], y=df_user_pca['PC2'], z=df_user_pca['PC3'], mode='markers', marker=dict(color=df_user_pca['Cluster'], colorscale='Inferno', cmin=color_range[0], cmax=color_range[1], opacity=1)))
-    st.session_state.fig_pca.add_trace(go.Scatter3d(x=df_rest_pca['PC1'], y=df_rest_pca['PC2'], z=df_rest_pca['PC3'], mode='markers', marker=dict(color=df_rest_pca['Cluster'], colorscale='Inferno', cmin=color_range[0], cmax=color_range[1], opacity=0.1)))
+    st.session_state.fig_pca.add_trace(go.Scatter3d(x=df_rest_pca['PC1'], y=df_rest_pca['PC2'], z=df_rest_pca['PC3'], mode='markers', marker=dict(color=df_rest_pca['Cluster'], colorscale='Inferno', cmin=color_range[0], cmax=color_range[1], opacity=0.05)))
     st.session_state.fig_pca.update_layout(showlegend=False, scene=dict(xaxis_title='PC1', yaxis_title='PC2', zaxis_title='PC3'))
 
 # OUTPUT
 # Checking if previous results in cache or not
-if st.session_state.df_coffee_reco is not None:
-    col1, col2 = st.columns([0.4, 0.6], gap='large')
-    with col1:
-        st.subheader(f'''***Your coffee belongs to the cluster*** n. **:red[{st.session_state.user_pred}]**''')
-        st.plotly_chart(st.session_state.fig_pca)
+tab1, tab2, tab3 = st.tabs(['**K-Means**', '**Agglomerative Clustering**', '**Euclidean Distances**'])
 
-    with col2:
-        st.subheader('''Here are some recommendations''')
-        st.markdown('''🤓 Feel free to play with the filters and column sorting for more results! ''')
-        columns_order = ['Owner.1', 'Tasting profile', 'Total.Cup.Points', 'Variety', 'Country.of.Origin', 'Processing.Method', 'altitude_mean_meters', 'Species', 'Farm.Name', 'Region', 'In.Country.Partner', 'Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness', 'Moisture', 'Color']
+## K-Means output
+with tab1:
+    if st.session_state.df_coffee_reco is not None:
+        col1, col2 = st.columns([0.4, 0.6], gap='large')
+        with col1:
+            st.subheader(f'''***Your coffee belongs to the cluster*** n. **:red[{st.session_state.user_pred}]**''')
+            st.plotly_chart(st.session_state.fig_pca)
 
-        ## Filters
-        # Initialize dataframe
-        filtered_df = st.session_state.df_coffee_reco
+        with col2:
+            st.subheader('''Here are some recommendations''')
+            st.markdown('''🤓 Feel free to play with the filters and column sorting for more results! ''')
+            columns_order = ['Owner.1', 'Tasting profile', 'Total.Cup.Points', 'Variety', 'Country.of.Origin', 'Processing.Method', 'altitude_mean_meters', 'Species', 'Farm.Name', 'Region', 'In.Country.Partner', 'Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness', 'Moisture', 'Color']
 
-        # Variety
-        activate_variety_filter = st.checkbox('Filter by variety 🌱')
-        # Updating the dropdown and filtered dataframe
-        if activate_variety_filter:
-            variety_dropdown = st.session_state.df_coffee_reco['Variety'].unique().tolist()
-            variety_filter = st.selectbox('Select the coffee varieties', variety_dropdown, index=None)
-            filtered_df = filtered_df[filtered_df['Variety']==variety_filter]
+            ## Filters
+            # Initialize dataframe
+            filtered_df = st.session_state.df_coffee_reco
 
-        # Process
-        activate_process_filter = st.checkbox('Filter by process 🧪')
-        # Updating the dropdown and filtered dataframe
-        if activate_process_filter:
-            process_dropdown = st.session_state.df_coffee_reco['Processing.Method'].unique().tolist()
-            process_filter = st.selectbox('Select the processing method', process_dropdown, index=None)
-            filtered_df = filtered_df[filtered_df['Processing.Method']==process_filter]
+            # Variety
+            activate_variety_filter = st.checkbox('Filter by variety 🌱')
+            # Updating the dropdown and filtered dataframe
+            if activate_variety_filter:
+                variety_dropdown = st.session_state.df_coffee_reco['Variety'].unique().tolist()
+                variety_filter = st.selectbox('Select the coffee varieties', variety_dropdown, index=None)
+                filtered_df = filtered_df[filtered_df['Variety']==variety_filter]
 
-        # Altitude
-        activate_altitude_filter = st.checkbox('Filter by altitude 🗻')
-        # Updating the dropdown and filtered dataframe
-        if activate_altitude_filter:
-            altitude_min = st.session_state.df_coffee_reco['altitude_mean_meters'].min()
-            altitude_max = st.session_state.df_coffee_reco['altitude_mean_meters'].max()
-            altitude_filter = st.select_slider('Select the altitude range', value=[altitude_min, altitude_max], 
-                                               options=range(int(altitude_min), int(altitude_max)+1), 
-                                               help='Missing altitudes are labelled 0')
-            filtered_df = filtered_df[(filtered_df['altitude_mean_meters'] >= altitude_filter[0]) & 
-                                                  (filtered_df['altitude_mean_meters'] <= altitude_filter[1])]
+            # Process
+            activate_process_filter = st.checkbox('Filter by process 🧪')
+            # Updating the dropdown and filtered dataframe
+            if activate_process_filter:
+                process_dropdown = st.session_state.df_coffee_reco['Processing.Method'].unique().tolist()
+                process_filter = st.selectbox('Select the processing method', process_dropdown, index=None)
+                filtered_df = filtered_df[filtered_df['Processing.Method']==process_filter]
 
-        ## OUTPUT FILTERED (or not) DATAFRAME
-        # Displaying the filtered dataframe with custom columns
-        df_edited = st.data_editor(
-            filtered_df.head(10),
-            column_config={
-                'Owner.1': 'Exploitation name',
-                'Total.Cup.Points': st.column_config.ProgressColumn(
-                    'Coffee rating',
-                    help='How much the coffee was rated by certified tasters',
-                    format='⭐ %.1f',
-                    min_value=0,
-                    max_value=100
-                ),
-                'Tasting profile': st.column_config.BarChartColumn(
-                    '  🍫  ⏱  🍋   💪   🧁',
-                    help='Each bar corresponds to the sliders above (same order)',
-                    y_min=0,
-                    y_max=10.00
-                ),
-                'Country.of.Origin': 'Country',
-                'Processing.Method' : 'Process',
-                'altitude_mean_meters': 'Altitude',
-                'Farm.Name':None,
-                'In.Country.Partner':None,
-                'Aroma':None,
-                'Aftertaste':None,
-                'Acidity':None,
-                'Body':None,
-                'Sweetness':None,
-                'Moisture':st.column_config.NumberColumn(
-                    format='%.2f%%'
-                )
-            },
-            hide_index=True, key='broader_df', column_order=columns_order
-        )
+            # Altitude
+            activate_altitude_filter = st.checkbox('Filter by altitude 🗻')
+            # Updating the dropdown and filtered dataframe
+            if activate_altitude_filter:
+                altitude_min = st.session_state.df_coffee_reco['altitude_mean_meters'].min()
+                altitude_max = st.session_state.df_coffee_reco['altitude_mean_meters'].max()
+                altitude_filter = st.select_slider('Select the altitude range', value=[altitude_min, altitude_max], 
+                                                options=range(int(altitude_min), int(altitude_max)+1), 
+                                                help='Missing altitudes are labelled 0')
+                filtered_df = filtered_df[(filtered_df['altitude_mean_meters'] >= altitude_filter[0]) & 
+                                                    (filtered_df['altitude_mean_meters'] <= altitude_filter[1])]
 
-else:
-    st.write('Press the button to see recommendations')
+            ## OUTPUT FILTERED (or not) DATAFRAME
+            # Displaying the filtered dataframe with custom columns
+            df_edited = st.data_editor(
+                filtered_df.head(10),
+                column_config={
+                    'Owner.1': 'Exploitation name',
+                    'Total.Cup.Points': st.column_config.ProgressColumn(
+                        'Coffee rating',
+                        help='How much the coffee was rated by certified tasters',
+                        format='⭐ %.1f',
+                        min_value=0,
+                        max_value=100
+                    ),
+                    'Tasting profile': st.column_config.BarChartColumn(
+                        '  🍫  ⏱  🍋   💪   🧁',
+                        help='Each bar corresponds to the sliders above (same order)',
+                        y_min=0,
+                        y_max=10.00
+                    ),
+                    'Country.of.Origin': 'Country',
+                    'Processing.Method' : 'Process',
+                    'altitude_mean_meters': 'Altitude',
+                    'Farm.Name':None,
+                    'In.Country.Partner':None,
+                    'Aroma':None,
+                    'Aftertaste':None,
+                    'Acidity':None,
+                    'Body':None,
+                    'Sweetness':None,
+                    'Moisture':st.column_config.NumberColumn(
+                        format='%.2f%%'
+                    )
+                },
+                hide_index=True, key='broader_df', column_order=columns_order
+            )
+    else:
+        st.write('Press the button to see recommendations')
+
+## Agglomerative output
+with tab2:
+    st.markdown('👷🏻‍♂️ In construction, come later')
+
+## Euclidean distances output
+with tab3:
+    st.markdown('👷🏻‍♂️ In construction')    
+st.markdown('---')
+
+
+
+############################################################
+## Highlighting basic infos
+st.header('Here are some basic infos you may need')
+
+col1, col2 = st.columns([0.5, 0.5], gap='large')
+with col1:
+    st.subheader('''🏆 Your roaster deserves better than just a bag of quakers''')
+    st.markdown('***Beander got you covered with only top-notch coffee beans.***')
+    data_cup = data.groupby('Variety')['Total.Cup.Points'].mean()
+    fig_cup = px.bar(data_cup)
+    fig_cup.update_layout(
+        xaxis_title='Variety',
+        yaxis_title='Average Total Cup Points',
+        showlegend=False)
+    fig_cup.add_hline(y=80, line_width=3, line_dash='solid', line_color='red')
+    st.plotly_chart(fig_cup)
+
+with col2:
+    st.subheader('''🏆 this is test''')
+    acid = px.histogram(data, x='Acidity')
+    st.plotly_chart(acid)
+
+
+st.markdown('---')
+st.header("🪄 Welcome to the backstages")
+
+## visualizing the clusters
+st.header('🤖 How it works')
+st.subheader('📈 PCA visualisation based on a K-Means with 8 clusters')
+st.markdown('''These clusters are defined by 5 common coffee descriptors : Aroma, Aftertaste, Acidity, Body, Sweetness. ''')
+fig = px.scatter_3d(data_frame=df_final, x='PC1', y='PC2', z='PC3', color='Cluster', color_continuous_scale='Inferno')
+st.plotly_chart(fig)
+
+st.subheader('''Find all our coffee references here: ''')
+## Run the below code if the box is checked ✅
+if st.checkbox('👀 Check the box to see the complete dataset'):
+    st.subheader('The complete coffee dataset')
+    st.write(data)    
