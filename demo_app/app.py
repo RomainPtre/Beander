@@ -32,6 +32,9 @@ def load_data():
 
 data = load_data()
 
+# To call the original table without the cluster columns, to display in the 'backstage' section
+data_orig = data
+
 ## DATA SEGMENTATION
 ## Kmeans pipeline
 numeric_cols = data[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness']]  # Profile aromatique
@@ -157,7 +160,7 @@ with tab1:
             # Updating the dropdown and filtered dataframe
             if activate_variety_filter:
                 variety_dropdown = st.session_state.df_coffee_reco['Variety'].unique().tolist()
-                variety_filter = st.selectbox('Select the coffee varieties', variety_dropdown, index=None)
+                variety_filter = st.selectbox('Select the coffee varieties', variety_dropdown)
                 filtered_df = filtered_df[filtered_df['Variety']==variety_filter]
 
             # Process
@@ -165,7 +168,7 @@ with tab1:
             # Updating the dropdown and filtered dataframe
             if activate_process_filter:
                 process_dropdown = st.session_state.df_coffee_reco['Processing.Method'].unique().tolist()
-                process_filter = st.selectbox('Select the processing method', process_dropdown, index=None)
+                process_filter = st.selectbox('Select the processing method', process_dropdown)
                 filtered_df = filtered_df[filtered_df['Processing.Method']==process_filter]
 
             # Altitude
@@ -220,11 +223,17 @@ with tab1:
 
 ## Agglomerative output
 with tab2:
-    st.markdown('👷🏻‍♂️ In construction, come later')
+    if st.session_state.df_coffee_reco is not None:
+        st.markdown('👷🏻‍♂️ In construction, come later')
+    else :
+        st.write('Press the button to see recommendations')
 
 ## Euclidean distances output
 with tab3:
-    st.markdown('👷🏻‍♂️ In construction')    
+    if st.session_state.df_coffee_reco is not None:
+        st.markdown('👷🏻‍♂️ In construction')
+    else:
+        st.write('Press the button to see recommendations')    
 st.markdown('---')
 
 
@@ -266,4 +275,4 @@ st.subheader('''Find all our coffee references here: ''')
 ## Run the below code if the box is checked ✅
 if st.checkbox('👀 Check the box to see the complete dataset'):
     st.subheader('The complete coffee dataset')
-    st.write(data)    
+    st.write(data_orig)    
