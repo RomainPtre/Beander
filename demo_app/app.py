@@ -209,7 +209,7 @@ if st.button('Go fetch, Beander!'):
     st.session_state.fig_pca_agg.add_trace(go.Scatter3d(x=df_rest_pca_agg['PC1'], y=df_rest_pca_agg['PC2'], z=df_rest_pca_agg['PC3'], mode='markers', marker=dict(color=df_rest_pca_agg['ClusterAgg'], colorscale='Inferno', cmin=color_range_agg[0], cmax=color_range_agg[1], opacity=0.05)))
     st.session_state.fig_pca_agg.update_layout(showlegend=False, scene=dict(xaxis_title='PC1', yaxis_title='PC2', zaxis_title='PC3'))
 
-
+    #####################################
     # EUCLIDEAN DISTANCES
     user_input_scaled = scaler_dist.transform(user_row)
     distances = euclidean_distances(features_scaled_dist, user_input_scaled)
@@ -225,10 +225,10 @@ if st.button('Go fetch, Beander!'):
 
 # OUTPUT
 # Checking if previous results in cache or not
-tab1, tab2, tab3 = st.tabs(['**K-Means**', '**Agglomerative Clustering**', '**Euclidean Distances**'])
+tab1, tab2, tab3 = st.tabs(['**Euclidean Distances**', '**K-Means**', '**Agglomerative Clustering**'])
 
 ## K-Means output
-with tab1:
+with tab2:
     if st.session_state.df_coffee_reco_kmeans is not None:
         col1, col2 = st.columns([0.4, 0.6], gap='large')
         with col1:
@@ -311,9 +311,8 @@ with tab1:
         st.write('Press the button to see recommendations')
 
 ## Agglomerative output
-with tab2:
+with tab3:
     if st.session_state.df_coffee_reco_agg is not None:
-        st.markdown('👷🏻‍♂️ In construction, come later')
         col1, col2 = st.columns([0.4, 0.6], gap='large')
         with col1:
             st.subheader(f'''***Your coffee belongs to the cluster*** n. **:red[{st.session_state.user_pred_agg}]**''')
@@ -325,8 +324,40 @@ with tab2:
             columns_order = ['Owner.1', 'Tasting profile', 'Total.Cup.Points', 'Variety', 'Country.of.Origin', 'Processing.Method', 'altitude_mean_meters', 'Species', 'Farm.Name', 'Region', 'In.Country.Partner', 'Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness', 'Moisture', 'Color']
             # st.data_editor(st.session_state.df_coffee_reco_agg.head(10))
 
+            ## Filters
+            # Initialize dataframe
+            filtered_df_agg = st.session_state.df_coffee_reco_agg
+
+            # Variety
+            activate_variety_filter = st.checkbox('Filter by variety 🌱', key='variety_agg')
+            # Updating the dropdown and filtered dataframe
+            if activate_variety_filter:
+                variety_dropdown = st.session_state.df_coffee_reco_agg['Variety'].unique().tolist()
+                variety_filter = st.selectbox('Select the coffee varieties', variety_dropdown)
+                filtered_df_agg = filtered_df_agg[filtered_df_agg['Variety']==variety_filter]
+
+            # Process
+            activate_process_filter = st.checkbox('Filter by process 🧪', key='process_agg')
+            # Updating the dropdown and filtered dataframe
+            if activate_process_filter:
+                process_dropdown = st.session_state.df_coffee_reco_agg['Processing.Method'].unique().tolist()
+                process_filter = st.selectbox('Select the processing method', process_dropdown)
+                filtered_df_agg = filtered_df_agg[filtered_df_agg['Processing.Method']==process_filter]
+
+            # Altitude
+            activate_altitude_filter = st.checkbox('Filter by altitude 🗻', key='process_alt')
+            # Updating the dropdown and filtered dataframe
+            if activate_altitude_filter:
+                altitude_min = st.session_state.df_coffee_reco_agg['altitude_mean_meters'].min()
+                altitude_max = st.session_state.df_coffee_reco_agg['altitude_mean_meters'].max()
+                altitude_filter = st.select_slider('Select the altitude range', value=[altitude_min, altitude_max], 
+                                                options=range(int(altitude_min), int(altitude_max)+1), 
+                                                help='Missing altitudes are labelled 0')
+                filtered_df_agg = filtered_df_agg[(filtered_df_agg['altitude_mean_meters'] >= altitude_filter[0]) & 
+                                                    (filtered_df_agg['altitude_mean_meters'] <= altitude_filter[1])]
+
             df_edited_agg = st.data_editor(
-            st.session_state.df_coffee_reco_agg.head(10),
+            filtered_df_agg.head(10),
             column_config={
             'Owner.1': 'Exploitation name',
             'Total.Cup.Points': st.column_config.ProgressColumn(
@@ -363,7 +394,7 @@ with tab2:
         st.write('Press the button to see recommendations')
 
 ## Euclidean distances output
-with tab3:
+with tab1:
     if st.session_state.df_coffee_reco_dist is not None:
         st.subheader(f'''***Here are the :red[10] closest coffees***''')
         st.markdown('''🤓 Feel free to play with the filters and column sorting for more results! ''')
