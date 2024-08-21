@@ -262,9 +262,12 @@ with tab2:
 with tab3:
     if st.session_state.df_coffee_reco_dist is not None:
         st.subheader('''***Here are the :red[10] closest coffees***''')
+
+        data['Distance'] = st.session_state.user_pred_dist
+        filtered_df_dist = st.session_state.df_coffee_reco_dist.sort_values(by='Distance')
         ## Filters
-        # Initialize dataframe
-        filtered_df_dist = st.session_state.df_coffee_reco_dist
+        # # Initialize dataframe
+        # filtered_df_dist = st.session_state.df_coffee_reco_dist
 
         # Variety
         activate_variety_filter = st.checkbox('Filter by variety 🌱', key= 'variety_dist')
@@ -296,12 +299,11 @@ with tab3:
 
 
         st.markdown('👷🏻‍♂️ In construction')
-        data['Distance'] = st.session_state.user_pred_dist
-        filtered_df_dist = st.session_state.df_coffee_reco_dist.sort_values(by='Distance')
+
         # st.data_editor(df_sorted_dist.head(10))
         df_edited_dist = st.data_editor(
-    filtered_df_dist.head(10),
-    column_config={
+        filtered_df_dist.head(10),
+        column_config={
         'Owner.1': 'Exploitation name',
         'Total.Cup.Points': st.column_config.ProgressColumn(
             'Coffee rating',
