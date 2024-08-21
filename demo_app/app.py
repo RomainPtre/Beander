@@ -3,7 +3,9 @@ import pandas as pd
 import plotly.express as px 
 import plotly.graph_objects as go
 import numpy as np
+import joblib as jb
 from sklearn.cluster import KMeans
+from sklearn.cluster import AgglomerativeClustering
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import euclidean_distances
@@ -40,13 +42,16 @@ numeric_cols = data[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness']]  # 
 
 ## DATA SEGMENTATION
 ## Kmeans pipeline
+
 scaler_kmeans = StandardScaler()
 features_scaled_kmeans = scaler_kmeans.fit_transform(numeric_cols)
-kmeans = KMeans(n_clusters=8, random_state=42)
+kmeans = KMeans(n_clusters=8, random_state=42) # Replace by a jb.load(kmeans.pckl) when ready
 kmeans.fit(features_scaled_kmeans)
 data['ClusterKmeans'] = kmeans.labels_
 
 ## Agglomerative clustering pipeline
+# HAS TO BE AFTER USER INPUT
+data_agg = data
 
 ## Euclidean distance pipeline
 # Normalisation de la donnée
@@ -54,6 +59,7 @@ scaler_dist = StandardScaler()
 features_scaled_dist = scaler_dist.fit_transform(numeric_cols)
 
 ## PCA For dataviz
+## Kmeans
 pca = PCA()
 df_pca = pca.fit_transform(features_scaled_kmeans)
 df_final = pd.DataFrame(df_pca)
@@ -62,6 +68,8 @@ df_final = pd.concat([df_final, data['ClusterKmeans']], axis=1)
 new_names = {0: 'PC1', 1: 'PC2', 2: 'PC3', 3: 'PC4', 4: 'PC5'}
 df_final = df_final.rename(columns=new_names)
 
+
+######################################################
 ## Input flavors
 st.header('👾 How do you like your coffee?')
 st.markdown('''
@@ -118,6 +126,7 @@ if st.button('Go fetch, Beander!'):
     # transforming user_row as dataframew to concatenate it to data in the different pipelines
     user_row = pd.DataFrame([user_row])
 
+    ######################
     ## KMEANS
     user_row_scaled = scaler_kmeans.transform(user_row)
     st.session_state.user_pred_kmeans = kmeans.predict(user_row_scaled)[0]
@@ -144,11 +153,61 @@ if st.button('Go fetch, Beander!'):
     # Displaying the 3D PCA
     color_range = [df_pca['ClusterKmeans'].min(), df_pca['ClusterKmeans'].max()]
 
-    st.session_state.fig_pca = go.Figure(go.Scatter3d(x=df_user_pca['PC1'], y=df_user_pca['PC2'], z=df_user_pca['PC3'], mode='markers', marker=dict(color=df_user_pca['ClusterKmeans'], colorscale='Inferno', cmin=color_range[0], cmax=color_range[1], opacity=1)))
-    st.session_state.fig_pca.add_trace(go.Scatter3d(x=df_rest_pca['PC1'], y=df_rest_pca['PC2'], z=df_rest_pca['PC3'], mode='markers', marker=dict(color=df_rest_pca['ClusterKmeans'], colorscale='Inferno', cmin=color_range[0], cmax=color_range[1], opacity=0.05)))
-    st.session_state.fig_pca.update_layout(showlegend=False, scene=dict(xaxis_title='PC1', yaxis_title='PC2', zaxis_title='PC3'))
+    st.session_state.fig_pca_kmeans = go.Figure(go.Scatter3d(x=df_user_pca['PC1'], y=df_user_pca['PC2'], z=df_user_pca['PC3'], mode='markers', marker=dict(color=df_user_pca['ClusterKmeans'], colorscale='Inferno', cmin=color_range[0], cmax=color_range[1], opacity=1)))
+    st.session_state.fig_pca_kmeans.add_trace(go.Scatter3d(x=df_rest_pca['PC1'], y=df_rest_pca['PC2'], z=df_rest_pca['PC3'], mode='markers', marker=dict(color=df_rest_pca['ClusterKmeans'], colorscale='Inferno', cmin=color_range[0], cmax=color_range[1], opacity=0.05)))
+    st.session_state.fig_pca_kmeans.update_layout(showlegend=False, scene=dict(xaxis_title='PC1', yaxis_title='PC2', zaxis_title='PC3'))
 
+    ##########################
     # AGGLOMERATIVE CLUSTERING
+    ## Model and table
+    numeric_cols_agg = data_agg[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness']]  # Profile aromatique
+    numeric_cols_agg.iloc[-1] = user_row
+    scaler_agg = StandardScaler()
+    features_scaled_agg = scaler_agg.fit_transform(numeric_cols_agg)
+    agg = AgglomerativeClustering(n_clusters=11, metric='euclidean', linkage='ward')
+    agg.fit(features_scaled_agg)
+    data_agg['ClusterAgg'] = agg.labels_
+
+    user_pred_agg = data_agg['ClusterAgg'].iloc[-1]
+    st.session_state.user_pred_agg = user_pred_agg
+
+    df_coffee_reco_agg = data_agg[data_agg['ClusterAgg'] == user_pred_agg]
+    df_coffee_reco_agg = df_coffee_reco_agg.iloc[:-1]
+    st.session_state.df_coffee_reco_agg = df_coffee_reco_agg
+
+    ## PCA
+    pca = PCA()
+    df_pca_agg = pca.fit_transform(features_scaled_agg)
+    df_final_agg = pd.DataFrame(df_pca_agg)
+    df_final_agg = df_final_agg.dot(pca.components_.T)
+    df_final_agg = pd.concat([df_final_agg, data['ClusterAgg']], axis=1)
+    new_names = {0: 'PC1', 1: 'PC2', 2: 'PC3', 3: 'PC4', 4: 'PC5'}
+    df_final_agg = df_final_agg.rename(columns=new_names)
+
+    df_pca_agg = df_final_agg
+
+    ## Splitting dataframe based on user_cluster or not
+    mask_user = df_pca_agg['ClusterAgg'] == st.session_state.user_pred_agg
+    df_user_pca_agg = df_pca_agg[mask_user]
+    df_rest_pca_agg = df_pca_agg[~mask_user]
+
+    # Storing the dataframe in session state
+    st.session_state.df_coffee_reco_agg = data_agg[data_agg['ClusterAgg'] == st.session_state.user_pred_agg]
+
+    # Keeping only columns of interest
+    columns_to_keep = ['Species', 'Country.of.Origin', 'Farm.Name', 'Region', 'In.Country.Partner', 'Owner.1', 'Variety', 'Processing.Method', 'Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness', 'Total.Cup.Points', 'Moisture', 'Color', 'altitude_mean_meters']
+    st.session_state.df_coffee_reco_agg = st.session_state.df_coffee_reco_agg[columns_to_keep]
+
+    # Fill a column with all values from tasting profile for fancy display of tasting profile
+    st.session_state.df_coffee_reco_agg['Tasting profile'] = st.session_state.df_coffee_reco_agg.apply(lambda x: [x['Aroma'], x['Aftertaste'], x['Acidity'], x['Body'], x['Sweetness']], axis=1)
+
+
+    # Displaying the 3D PCA
+    color_range_agg = [df_pca_agg['ClusterAgg'].min(), df_pca_agg['ClusterAgg'].max()]
+
+    st.session_state.fig_pca_agg = go.Figure(go.Scatter3d(x=df_user_pca_agg['PC1'], y=df_user_pca_agg['PC2'], z=df_user_pca_agg['PC3'], mode='markers', marker=dict(color=df_user_pca_agg['ClusterAgg'], colorscale='Inferno', cmin=color_range_agg[0], cmax=color_range_agg[1], opacity=1)))
+    st.session_state.fig_pca_agg.add_trace(go.Scatter3d(x=df_rest_pca_agg['PC1'], y=df_rest_pca_agg['PC2'], z=df_rest_pca_agg['PC3'], mode='markers', marker=dict(color=df_rest_pca_agg['ClusterAgg'], colorscale='Inferno', cmin=color_range_agg[0], cmax=color_range_agg[1], opacity=0.05)))
+    st.session_state.fig_pca_agg.update_layout(showlegend=False, scene=dict(xaxis_title='PC1', yaxis_title='PC2', zaxis_title='PC3'))
 
 
     # EUCLIDEAN DISTANCES
@@ -174,7 +233,7 @@ with tab1:
         col1, col2 = st.columns([0.4, 0.6], gap='large')
         with col1:
             st.subheader(f'''***Your coffee belongs to the cluster*** n. **:red[{st.session_state.user_pred_kmeans}]**''')
-            st.plotly_chart(st.session_state.fig_pca)
+            st.plotly_chart(st.session_state.fig_pca_kmeans)
 
         with col2:
             st.subheader('''Here are some recommendations''')
@@ -246,7 +305,7 @@ with tab1:
                         format='%.2f%%'
                     )
                 },
-                hide_index=True, key='broader_df_knn', column_order=columns_order
+                hide_index=True, key='broader_df_knn', column_order=columns_order, disabled=True
             )
     else:
         st.write('Press the button to see recommendations')
@@ -255,13 +314,59 @@ with tab1:
 with tab2:
     if st.session_state.df_coffee_reco_agg is not None:
         st.markdown('👷🏻‍♂️ In construction, come later')
+        col1, col2 = st.columns([0.4, 0.6], gap='large')
+        with col1:
+            st.subheader(f'''***Your coffee belongs to the cluster*** n. **:red[{st.session_state.user_pred_agg}]**''')
+            st.plotly_chart(st.session_state.fig_pca_agg)
+
+        with col2:
+            st.subheader('''Here are some recommendations''')
+            st.markdown('''🤓 Feel free to play with the filters and column sorting for more results! ''')
+            columns_order = ['Owner.1', 'Tasting profile', 'Total.Cup.Points', 'Variety', 'Country.of.Origin', 'Processing.Method', 'altitude_mean_meters', 'Species', 'Farm.Name', 'Region', 'In.Country.Partner', 'Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness', 'Moisture', 'Color']
+            # st.data_editor(st.session_state.df_coffee_reco_agg.head(10))
+
+            df_edited_agg = st.data_editor(
+            st.session_state.df_coffee_reco_agg.head(10),
+            column_config={
+            'Owner.1': 'Exploitation name',
+            'Total.Cup.Points': st.column_config.ProgressColumn(
+                'Coffee rating',
+                help='How much the coffee was rated by certified tasters',
+                format='⭐ %.1f',
+                min_value=0,
+                max_value=100
+            ),
+            'Tasting profile': st.column_config.BarChartColumn(
+                '  🍫  ⏱  🍋   💪   🧁',
+                help='Each bar corresponds to the sliders above (same order)',
+                y_min=0,
+                y_max=10.00
+            ),
+            'Country.of.Origin': 'Country',
+            'Processing.Method' : 'Process',
+            'altitude_mean_meters': 'Altitude',
+            'Farm.Name':None,
+            'In.Country.Partner':None,
+            'Aroma':None,
+            'Aftertaste':None,
+            'Acidity':None,
+            'Body':None,
+            'Sweetness':None,
+            'Moisture':st.column_config.NumberColumn(
+                format='%.2f%%'
+            )
+        },
+        hide_index=True, key='df_agg', column_order=columns_order, disabled=True
+    )
+
     else :
         st.write('Press the button to see recommendations')
 
 ## Euclidean distances output
 with tab3:
     if st.session_state.df_coffee_reco_dist is not None:
-        st.subheader('''***Here are the :red[10] closest coffees***''')
+        st.subheader(f'''***Here are the :red[10] closest coffees***''')
+        st.markdown('''🤓 Feel free to play with the filters and column sorting for more results! ''')
 
         data['Distance'] = st.session_state.user_pred_dist
         filtered_df_dist = st.session_state.df_coffee_reco_dist.sort_values(by='Distance')
@@ -297,9 +402,6 @@ with tab3:
             filtered_df_dist = filtered_df_dist[(filtered_df_dist['altitude_mean_meters'] >= altitude_filter[0]) & 
                                                 (filtered_df_dist['altitude_mean_meters'] <= altitude_filter[1])]
 
-
-        st.markdown('👷🏻‍♂️ In construction')
-
         # st.data_editor(df_sorted_dist.head(10))
         df_edited_dist = st.data_editor(
         filtered_df_dist.head(10),
@@ -332,7 +434,7 @@ with tab3:
             format='%.2f%%'
         )
     },
-    hide_index=True, key='df_dist', column_order=columns_order
+    hide_index=True, key='df_dist', column_order=columns_order, disabled=True
 )
 
     else:
