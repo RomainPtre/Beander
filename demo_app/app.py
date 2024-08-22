@@ -43,7 +43,7 @@ numeric_cols = data[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness']]  # 
 ## DATA SEGMENTATION
 ## Kmeans pipeline
 scaler_kmeans = StandardScaler()
-features_scaled_kmeans = scaler_kmeans.fit_transform(numeric_cols)
+features_scaled_kmeans = scaler_kmeans.fit_transform(numeric_cols) # Only for PCA visualizations
 kmeans = jb.load('./src/models/Kmeans.pkl')
 
 ## Agglomerative clustering pipeline
@@ -52,11 +52,13 @@ data_agg = data
 numeric_cols_agg = data_agg[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness']]  # Profile aromatique
 # numeric_cols_agg.iloc[-1] = user_row
 scaler_agg = StandardScaler()
-features_scaled_agg = scaler_agg.fit_transform(numeric_cols_agg)
+features_scaled_agg = scaler_agg.fit_transform(numeric_cols_agg) # Only for PCA visualizations
 knn = jb.load('./src/models/knn.pkl')
 
+## DISTANCES
 ## Euclidean distance pipeline
 # Normalisation de la donnée
+data_dist = data
 scaler_dist = StandardScaler()
 features_scaled_dist = scaler_dist.fit_transform(numeric_cols)
 
@@ -69,6 +71,15 @@ df_final = df_final.dot(pca.components_.T)
 df_final = pd.concat([df_final, data['ClusterKmeans']], axis=1)
 new_names = {0: 'PC1', 1: 'PC2', 2: 'PC3', 3: 'PC4', 4: 'PC5'}
 df_final = df_final.rename(columns=new_names)
+
+## Agglomerative clustering
+pca = PCA()
+df_pca_agg = pca.fit_transform(features_scaled_agg)
+df_final_agg = pd.DataFrame(df_pca_agg)
+df_final_agg = df_final_agg.dot(pca.components_.T)
+df_final_agg = pd.concat([df_final_agg, data['ClusterAgg']], axis=1)
+new_names = {0: 'PC1', 1: 'PC2', 2: 'PC3', 3: 'PC4', 4: 'PC5'}
+df_final_agg = df_final_agg.rename(columns=new_names)
 
 
 ######################################################
@@ -163,33 +174,17 @@ if st.button('Go fetch, Beander!'):
     st.session_state.fig_pca_kmeans.update_layout(showlegend=False, scene=dict(xaxis_title='PC1', yaxis_title='PC2', zaxis_title='PC3'))
 
     ##########################
-    # AGGLOMERATIVE CLUSTERING
-    ## Model and table
-    # numeric_cols_agg.iloc[-1] = user_row
-    # agg = AgglomerativeClustering(n_clusters=11, metric='euclidean', linkage='ward')
-    # agg.fit(features_scaled_agg)
-    # data_agg['ClusterAgg'] = agg.labels_
-
+    # AGGLOMERATIVE CLUSTERING & KNN
     user_row_scaled_agg = scaler_agg.transform(user_row)
     user_pred_agg = knn.predict(user_row)   # To fix: not working properly when using user_row_scaled_agg
     user_pred_agg = int(user_pred_agg[0])
     st.session_state.user_pred_agg = user_pred_agg
 
     df_coffee_reco_agg = data_agg[data_agg['ClusterAgg'] == st.session_state.user_pred_agg]
-    # df_coffee_reco_agg = df_coffee_reco_agg.iloc[:-1]
-    # user_pred_agg = data_agg['ClusterAgg'].iloc[-1]
 
     st.session_state.df_coffee_reco_agg = df_coffee_reco_agg
 
     ## PCA
-    pca = PCA()
-    df_pca_agg = pca.fit_transform(features_scaled_agg)
-    df_final_agg = pd.DataFrame(df_pca_agg)
-    df_final_agg = df_final_agg.dot(pca.components_.T)
-    df_final_agg = pd.concat([df_final_agg, data['ClusterAgg']], axis=1)
-    new_names = {0: 'PC1', 1: 'PC2', 2: 'PC3', 3: 'PC4', 4: 'PC5'}
-    df_final_agg = df_final_agg.rename(columns=new_names)
-
     df_pca_agg = df_final_agg
 
     ## Splitting dataframe based on user_cluster or not
@@ -220,9 +215,9 @@ if st.button('Go fetch, Beander!'):
     user_input_scaled = scaler_dist.transform(user_row)
     distances = euclidean_distances(features_scaled_dist, user_input_scaled)
     st.session_state.user_pred_dist = distances
-    data['ClusterDist'] = distances
+    data_dist['ClusterDist'] = distances
     # Storing the reco basedo n distances in session state
-    st.session_state.df_coffee_reco_dist = data#['ClusterDist']
+    st.session_state.df_coffee_reco_dist = data_dist
 
     # Fill a column with all values from tasting profile for fancy display of tasting profile
     st.session_state.df_coffee_reco_dist['Tasting profile'] = st.session_state.df_coffee_reco_dist.apply(lambda x: [x['Aroma'], x['Aftertaste'], x['Acidity'], x['Body'], x['Sweetness']], axis=1)
@@ -231,7 +226,7 @@ if st.button('Go fetch, Beander!'):
 
 # OUTPUT
 # Checking if previous results in cache or not
-tab1, tab2, tab3 = st.tabs(['**Euclidean Distances**', '**K-Means**', '**Agglomerative Clustering**'])
+tab1, tab2, tab3 = st.tabs(['**Euclidean Distances**', '**K-Means**', '**Agglomerative Clustering & KNN**'])
 
 ## K-Means output
 with tab2:
@@ -405,7 +400,7 @@ with tab1:
         st.subheader(f'''***Here are the :red[10] closest coffees***''')
         st.markdown('''🤓 Feel free to play with the filters and column sorting for more results! ''')
 
-        data['Distance'] = st.session_state.user_pred_dist
+        data_dist['Distance'] = st.session_state.user_pred_dist
         filtered_df_dist = st.session_state.df_coffee_reco_dist.sort_values(by='Distance')
         ## Filters
         # # Initialize dataframe
@@ -506,11 +501,18 @@ st.markdown('---')
 
 if st.checkbox('👀 Click here to see how **Beander** works'):
     st.header('🪄 Welcome to the backstages')
-    ## visualizing the clusters
-    st.subheader('📈 PCA visualisation based on a K-Means with 8 clusters')
-    st.markdown('''These clusters are defined by 5 common coffee descriptors : Aroma, Aftertaste, Acidity, Body, Sweetness. ''')
-    fig = px.scatter_3d(data_frame=df_final, x='PC1', y='PC2', z='PC3', color='ClusterKmeans', color_continuous_scale='Inferno')
-    st.plotly_chart(fig)
+    col1, col2 = st.columns([0.5, 0.5], gap='large')
+    with col1:
+        ## visualizing the clusters with Kmeans
+        st.subheader('📈 PCA visualisation based on a K-Means with 8 clusters')
+        st.markdown('''These clusters are defined by 5 common coffee descriptors : Aroma, Aftertaste, Acidity, Body, Sweetness. ''')
+        fig = px.scatter_3d(data_frame=df_final, x='PC1', y='PC2', z='PC3', color='ClusterKmeans', color_continuous_scale='Inferno')
+        st.plotly_chart(fig)
+    
+    with col2:
+        st.subheader('''🌳 Hierarchical clustering''')
 
+
+    ## visualize the cluster with agglomerative clustering
     st.subheader('The complete coffee dataset')
     st.dataframe(data_orig)
