@@ -2,7 +2,7 @@ streamlit
 pandas
 plotly
 matplotlib
-numpy as np
-joblib as jb
+numpy
+joblib
 scikit-learn
 scipy
