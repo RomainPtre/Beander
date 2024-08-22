@@ -4,8 +4,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 import joblib as jb
-from sklearn.cluster import KMeans
-from sklearn.cluster import AgglomerativeClustering
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import euclidean_distances
@@ -30,11 +28,11 @@ st.markdown('---')
 
 ### Loading Dataset in cache
 @st.cache_data
-def load_data():
+def load_data(DATA):
     data = pd.read_csv(DATA, index_col=0)
     return data
 
-data = load_data()
+data = load_data(DATA)
 
 # To call the original table without the cluster columns, to display in the 'backstage' section
 data_orig = data
@@ -42,19 +40,23 @@ numeric_cols = data[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness']]  # 
 
 ## DATA SEGMENTATION
 ## Kmeans pipeline
-
 scaler_kmeans = StandardScaler()
-features_scaled_kmeans = scaler_kmeans.fit_transform(numeric_cols)
-kmeans = KMeans(n_clusters=8, random_state=42) # Replace by a jb.load(kmeans.pckl) when ready
-kmeans.fit(features_scaled_kmeans)
-data['ClusterKmeans'] = kmeans.labels_
+features_scaled_kmeans = scaler_kmeans.fit_transform(numeric_cols) # Only for PCA visualizations
+kmeans = jb.load('./src/models/Kmeans.pkl')
 
 ## Agglomerative clustering pipeline
 # HAS TO BE AFTER USER INPUT
 data_agg = data
+numeric_cols_agg = data_agg[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness']]  # Profile aromatique
+# numeric_cols_agg.iloc[-1] = user_row
+scaler_agg = StandardScaler()
+features_scaled_agg = scaler_agg.fit_transform(numeric_cols_agg) # Only for PCA visualizations
+knn = jb.load('./src/models/knn.pkl')
 
+## DISTANCES
 ## Euclidean distance pipeline
 # Normalisation de la donnée
+data_dist = data
 scaler_dist = StandardScaler()
 features_scaled_dist = scaler_dist.fit_transform(numeric_cols)
 
@@ -67,6 +69,15 @@ df_final = df_final.dot(pca.components_.T)
 df_final = pd.concat([df_final, data['ClusterKmeans']], axis=1)
 new_names = {0: 'PC1', 1: 'PC2', 2: 'PC3', 3: 'PC4', 4: 'PC5'}
 df_final = df_final.rename(columns=new_names)
+
+## Agglomerative clustering
+pca = PCA()
+df_pca_agg = pca.fit_transform(features_scaled_agg)
+df_final_agg = pd.DataFrame(df_pca_agg)
+df_final_agg = df_final_agg.dot(pca.components_.T)
+df_final_agg = pd.concat([df_final_agg, data['ClusterAgg']], axis=1)
+new_names = {0: 'PC1', 1: 'PC2', 2: 'PC3', 3: 'PC4', 4: 'PC5'}
+df_final_agg = df_final_agg.rename(columns=new_names)
 
 
 ######################################################
@@ -112,10 +123,13 @@ if 'user_pred_dist' not in st.session_state:
 if 'df_coffee_reco_agg' not in st.session_state:
     st.session_state.df_coffee_reco_agg = None
 
+if 'user_pred_agg' not in st.session_state:
+    st.session_state.user_pred_agg = None
+
 #################################################################################
 ### Predicting to which cluster user data belongs to
 ## Submit button to create new row
-if st.button('Go fetch, Beander!'):
+if st.button(':orange[Go fetch, Beander!]'):
     user_row = {'Aroma': aroma_values,
                 'Aftertaste': aftertaste_values,
                 'Acidity': acidity_values,
@@ -154,40 +168,25 @@ if st.button('Go fetch, Beander!'):
     color_range = [df_pca['ClusterKmeans'].min(), df_pca['ClusterKmeans'].max()]
 
     st.session_state.fig_pca_kmeans = go.Figure(go.Scatter3d(x=df_user_pca['PC1'], y=df_user_pca['PC2'], z=df_user_pca['PC3'], mode='markers', marker=dict(color=df_user_pca['ClusterKmeans'], colorscale='Inferno', cmin=color_range[0], cmax=color_range[1], opacity=1)))
-    st.session_state.fig_pca_kmeans.add_trace(go.Scatter3d(x=df_rest_pca['PC1'], y=df_rest_pca['PC2'], z=df_rest_pca['PC3'], mode='markers', marker=dict(color=df_rest_pca['ClusterKmeans'], colorscale='Inferno', cmin=color_range[0], cmax=color_range[1], opacity=0.05)))
+    st.session_state.fig_pca_kmeans.add_trace(go.Scatter3d(x=df_rest_pca['PC1'], y=df_rest_pca['PC2'], z=df_rest_pca['PC3'], mode='markers', marker=dict(color=df_rest_pca['ClusterKmeans'], colorscale='Inferno', cmin=color_range[0], cmax=color_range[1], opacity=0.1)))
     st.session_state.fig_pca_kmeans.update_layout(showlegend=False, scene=dict(xaxis_title='PC1', yaxis_title='PC2', zaxis_title='PC3'))
 
     ##########################
-    # AGGLOMERATIVE CLUSTERING
-    ## Model and table
-    numeric_cols_agg = data_agg[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness']]  # Profile aromatique
-    numeric_cols_agg.iloc[-1] = user_row
-    scaler_agg = StandardScaler()
-    features_scaled_agg = scaler_agg.fit_transform(numeric_cols_agg)
-    agg = AgglomerativeClustering(n_clusters=11, metric='euclidean', linkage='ward')
-    agg.fit(features_scaled_agg)
-    data_agg['ClusterAgg'] = agg.labels_
-
-    user_pred_agg = data_agg['ClusterAgg'].iloc[-1]
+    # AGGLOMERATIVE CLUSTERING & KNN
+    user_row_scaled_agg = scaler_agg.transform(user_row)
+    user_pred_agg = knn.predict(user_row) # To fix: not working properly when using user_row_scaled_agg
+    user_pred_agg = int(user_pred_agg[0])
     st.session_state.user_pred_agg = user_pred_agg
 
-    df_coffee_reco_agg = data_agg[data_agg['ClusterAgg'] == user_pred_agg]
-    df_coffee_reco_agg = df_coffee_reco_agg.iloc[:-1]
+    df_coffee_reco_agg = data_agg[data_agg['ClusterAgg'] == st.session_state.user_pred_agg]
+
     st.session_state.df_coffee_reco_agg = df_coffee_reco_agg
 
     ## PCA
-    pca = PCA()
-    df_pca_agg = pca.fit_transform(features_scaled_agg)
-    df_final_agg = pd.DataFrame(df_pca_agg)
-    df_final_agg = df_final_agg.dot(pca.components_.T)
-    df_final_agg = pd.concat([df_final_agg, data['ClusterAgg']], axis=1)
-    new_names = {0: 'PC1', 1: 'PC2', 2: 'PC3', 3: 'PC4', 4: 'PC5'}
-    df_final_agg = df_final_agg.rename(columns=new_names)
-
     df_pca_agg = df_final_agg
 
     ## Splitting dataframe based on user_cluster or not
-    mask_user = df_pca_agg['ClusterAgg'] == st.session_state.user_pred_agg
+    mask_user = df_pca_agg['ClusterAgg'] == user_pred_agg
     df_user_pca_agg = df_pca_agg[mask_user]
     df_rest_pca_agg = df_pca_agg[~mask_user]
 
@@ -206,7 +205,7 @@ if st.button('Go fetch, Beander!'):
     color_range_agg = [df_pca_agg['ClusterAgg'].min(), df_pca_agg['ClusterAgg'].max()]
 
     st.session_state.fig_pca_agg = go.Figure(go.Scatter3d(x=df_user_pca_agg['PC1'], y=df_user_pca_agg['PC2'], z=df_user_pca_agg['PC3'], mode='markers', marker=dict(color=df_user_pca_agg['ClusterAgg'], colorscale='Inferno', cmin=color_range_agg[0], cmax=color_range_agg[1], opacity=1)))
-    st.session_state.fig_pca_agg.add_trace(go.Scatter3d(x=df_rest_pca_agg['PC1'], y=df_rest_pca_agg['PC2'], z=df_rest_pca_agg['PC3'], mode='markers', marker=dict(color=df_rest_pca_agg['ClusterAgg'], colorscale='Inferno', cmin=color_range_agg[0], cmax=color_range_agg[1], opacity=0.05)))
+    st.session_state.fig_pca_agg.add_trace(go.Scatter3d(x=df_rest_pca_agg['PC1'], y=df_rest_pca_agg['PC2'], z=df_rest_pca_agg['PC3'], mode='markers', marker=dict(color=df_rest_pca_agg['ClusterAgg'], colorscale='Inferno', cmin=color_range_agg[0], cmax=color_range_agg[1], opacity=0.1)))
     st.session_state.fig_pca_agg.update_layout(showlegend=False, scene=dict(xaxis_title='PC1', yaxis_title='PC2', zaxis_title='PC3'))
 
     #####################################
@@ -214,9 +213,9 @@ if st.button('Go fetch, Beander!'):
     user_input_scaled = scaler_dist.transform(user_row)
     distances = euclidean_distances(features_scaled_dist, user_input_scaled)
     st.session_state.user_pred_dist = distances
-    data['ClusterDist'] = distances
+    data_dist['ClusterDist'] = distances
     # Storing the reco basedo n distances in session state
-    st.session_state.df_coffee_reco_dist = data#['ClusterDist']
+    st.session_state.df_coffee_reco_dist = data_dist
 
     # Fill a column with all values from tasting profile for fancy display of tasting profile
     st.session_state.df_coffee_reco_dist['Tasting profile'] = st.session_state.df_coffee_reco_dist.apply(lambda x: [x['Aroma'], x['Aftertaste'], x['Acidity'], x['Body'], x['Sweetness']], axis=1)
@@ -225,14 +224,14 @@ if st.button('Go fetch, Beander!'):
 
 # OUTPUT
 # Checking if previous results in cache or not
-tab1, tab2, tab3 = st.tabs(['**Euclidean Distances**', '**K-Means**', '**Agglomerative Clustering**'])
+tab1, tab2, tab3 = st.tabs(['**Euclidean Distances**', '**K-Means**', '**Agglomerative Clustering & KNN**'])
 
 ## K-Means output
 with tab2:
     if st.session_state.df_coffee_reco_kmeans is not None:
         col1, col2 = st.columns([0.4, 0.6], gap='large')
         with col1:
-            st.subheader(f'''***Your coffee belongs to the cluster*** n. **:red[{st.session_state.user_pred_kmeans}]**''')
+            st.subheader(f'''***Your coffee belongs to the cluster*** n. **:red[{st.session_state.user_pred_kmeans+1}]**''')
             st.plotly_chart(st.session_state.fig_pca_kmeans)
 
         with col2:
@@ -315,7 +314,7 @@ with tab3:
     if st.session_state.df_coffee_reco_agg is not None:
         col1, col2 = st.columns([0.4, 0.6], gap='large')
         with col1:
-            st.subheader(f'''***Your coffee belongs to the cluster*** n. **:red[{st.session_state.user_pred_agg}]**''')
+            st.subheader(f'''***Your coffee belongs to the cluster*** n. **:red[{st.session_state.user_pred_agg+1}]**''')
             st.plotly_chart(st.session_state.fig_pca_agg)
 
         with col2:
@@ -399,7 +398,7 @@ with tab1:
         st.subheader(f'''***Here are the :red[10] closest coffees***''')
         st.markdown('''🤓 Feel free to play with the filters and column sorting for more results! ''')
 
-        data['Distance'] = st.session_state.user_pred_dist
+        data_dist['Distance'] = st.session_state.user_pred_dist
         filtered_df_dist = st.session_state.df_coffee_reco_dist.sort_values(by='Distance')
         ## Filters
         # # Initialize dataframe
@@ -484,31 +483,34 @@ with col1:
     st.markdown('***Beander got you covered with only top-notch coffee beans.***')
     data_cup = data.groupby('Variety')['Total.Cup.Points'].mean()
     fig_cup = px.bar(data_cup)
-    fig_cup.update_layout(
-        xaxis_title='Variety',
-        yaxis_title='Average Total Cup Points',
-        showlegend=False)
+    fig_cup.update_layout(xaxis_title='Varieties', yaxis_title='Average Score', showlegend=False)
     fig_cup.add_hline(y=80, line_width=3, line_dash='solid', line_color='red')
     st.plotly_chart(fig_cup)
 
 with col2:
-    st.subheader('''🏆 this is test''')
-    acid = px.histogram(data, x='Acidity')
-    st.plotly_chart(acid)
+    st.subheader('''📊 Characterization by aromatic profile''')
+    st.markdown('''***Here are the 5 coffee descriptors Beander uses.***''')
+    box = px.box(data, y=['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness'])
+    box.update_layout(yaxis_title='Distribution')
+    st.plotly_chart(box)
 
 
 st.markdown('---')
-st.header("🪄 Welcome to the backstages")
 
-## visualizing the clusters
-st.header('🤖 How it works')
-st.subheader('📈 PCA visualisation based on a K-Means with 8 clusters')
-st.markdown('''These clusters are defined by 5 common coffee descriptors : Aroma, Aftertaste, Acidity, Body, Sweetness. ''')
-fig = px.scatter_3d(data_frame=df_final, x='PC1', y='PC2', z='PC3', color='ClusterKmeans', color_continuous_scale='Inferno')
-st.plotly_chart(fig)
+if st.checkbox('👀 Click here to see how **Beander** works'):
+    st.header('🪄 Welcome to the backstages')
+    col1, col2 = st.columns([0.5, 0.5], gap='large')
+    with col1:
+        ## visualizing the clusters with Kmeans
+        st.subheader('📈 PCA visualisation based on a K-Means with 8 clusters')
+        st.markdown('''These clusters are defined by 5 common coffee descriptors : Aroma, Aftertaste, Acidity, Body, Sweetness. ''')
+        fig = px.scatter_3d(data_frame=df_final, x='PC1', y='PC2', z='PC3', color='ClusterKmeans', color_continuous_scale='Inferno')
+        st.plotly_chart(fig)
+    
+    with col2:
+        st.subheader('''🌳 Hierarchical clustering''')
 
-st.subheader('''Find all our coffee references here: ''')
-## Run the below code if the box is checked ✅
-if st.checkbox('👀 Check the box to see the complete dataset'):
+
+    ## visualize the cluster with agglomerative clustering
     st.subheader('The complete coffee dataset')
-    st.write(data_orig)
+    st.dataframe(data_orig)
