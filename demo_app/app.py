@@ -4,8 +4,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 import joblib as jb
-from sklearn.cluster import KMeans
-from sklearn.cluster import AgglomerativeClustering
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import euclidean_distances
@@ -131,7 +129,7 @@ if 'user_pred_agg' not in st.session_state:
 #################################################################################
 ### Predicting to which cluster user data belongs to
 ## Submit button to create new row
-if st.button('Go fetch, Beander!'):
+if st.button(':orange[Go fetch, Beander!]'):
     user_row = {'Aroma': aroma_values,
                 'Aftertaste': aftertaste_values,
                 'Acidity': acidity_values,
@@ -176,7 +174,7 @@ if st.button('Go fetch, Beander!'):
     ##########################
     # AGGLOMERATIVE CLUSTERING & KNN
     user_row_scaled_agg = scaler_agg.transform(user_row)
-    user_pred_agg = knn.predict(user_row)   # To fix: not working properly when using user_row_scaled_agg
+    user_pred_agg = knn.predict(user_row) # To fix: not working properly when using user_row_scaled_agg
     user_pred_agg = int(user_pred_agg[0])
     st.session_state.user_pred_agg = user_pred_agg
 
