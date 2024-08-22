@@ -224,7 +224,6 @@ if st.button(':orange[Go fetch, Beander!]', type='secondary'):
     st.session_state.df_coffee_reco_dist['Tasting profile'] = st.session_state.df_coffee_reco_dist.apply(lambda x: [x['Aroma'], x['Aftertaste'], x['Acidity'], x['Body'], x['Sweetness']], axis=1)
 
     
-
 # OUTPUT
 # Checking if previous results in cache or not
 tab1, tab2, tab3 = st.tabs(['**Euclidean Distances**', '**K-Means**', '**Agglomerative Clustering & KNN**'])
