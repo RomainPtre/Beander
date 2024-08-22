@@ -2,11 +2,13 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px 
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 import numpy as np
 import joblib as jb
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import euclidean_distances
+from scipy.cluster.hierarchy import dendrogram, linkage
 
 
 ### Config
@@ -38,7 +40,8 @@ data = load_data(DATA)
 data_orig = data
 numeric_cols = data[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness']]  # Profile aromatique
 
-## DATA SEGMENTATION
+######### PIPELINES
+## SEGMENTATION
 ## Kmeans pipeline
 scaler_kmeans = StandardScaler()
 features_scaled_kmeans = scaler_kmeans.fit_transform(numeric_cols) # Only for PCA visualizations
@@ -51,7 +54,7 @@ numeric_cols_agg = data_agg[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetnes
 # numeric_cols_agg.iloc[-1] = user_row
 scaler_agg = StandardScaler()
 features_scaled_agg = scaler_agg.fit_transform(numeric_cols_agg) # Only for PCA visualizations
-knn = jb.load('./src/models/knn.pkl')
+knn = jb.load('./src/models/knn_5.pkl')
 
 ## DISTANCES
 ## Euclidean distance pipeline
@@ -129,7 +132,7 @@ if 'user_pred_agg' not in st.session_state:
 #################################################################################
 ### Predicting to which cluster user data belongs to
 ## Submit button to create new row
-if st.button(':orange[Go fetch, Beander!]'):
+if st.button(':orange[Go fetch, Beander!]', type='secondary'):
     user_row = {'Aroma': aroma_values,
                 'Aftertaste': aftertaste_values,
                 'Acidity': acidity_values,
@@ -137,7 +140,7 @@ if st.button(':orange[Go fetch, Beander!]'):
                 'Sweetness': sweetness_values}
 
 
-    # transforming user_row as dataframew to concatenate it to data in the different pipelines
+    # transforming user_row as dataframe to concatenate it to data in the different pipelines
     user_row = pd.DataFrame([user_row])
 
     ######################
@@ -173,7 +176,7 @@ if st.button(':orange[Go fetch, Beander!]'):
 
     ##########################
     # AGGLOMERATIVE CLUSTERING & KNN
-    user_row_scaled_agg = scaler_agg.transform(user_row)
+    user_row_scaled_agg = scaler_agg.fit_transform(user_row)
     user_pred_agg = knn.predict(user_row) # To fix: not working properly when using user_row_scaled_agg
     user_pred_agg = int(user_pred_agg[0])
     st.session_state.user_pred_agg = user_pred_agg
@@ -469,9 +472,10 @@ with tab1:
 
     else:
         st.write('Press the button to see recommendations')    
+
+
+
 st.markdown('---')
-
-
 
 ############################################################
 ## Highlighting basic infos
@@ -503,12 +507,21 @@ if st.checkbox('👀 Click here to see how **Beander** works'):
     with col1:
         ## visualizing the clusters with Kmeans
         st.subheader('📈 PCA visualisation based on a K-Means with 8 clusters')
-        st.markdown('''These clusters are defined by 5 common coffee descriptors : Aroma, Aftertaste, Acidity, Body, Sweetness. ''')
+        st.markdown('''These clusters are based on a K number of centroids to which are associated all the closest points. ''')
         fig = px.scatter_3d(data_frame=df_final, x='PC1', y='PC2', z='PC3', color='ClusterKmeans', color_continuous_scale='Inferno')
         st.plotly_chart(fig)
     
     with col2:
         st.subheader('''🌳 Hierarchical clustering''')
+        st.markdown('''This merges the closest pairs of clusters until all the observations belong to a single cluster. ''')
+        # Creare un dendogramma con taglio a un livello specifico
+        den = plt.figure(figsize=(10, 7))
+        Z = linkage(features_scaled_agg, method='ward')
+        dendrogram(Z, truncate_mode='lastp', p=11)  # Mostra solo gli ultimi 5 cluster formati
+        plt.title('Dendrogram with 11 clusters')
+        plt.xlabel('Cluster')
+        plt.ylabel('Affinity')
+        st.pyplot(den)
 
 
     ## visualize the cluster with agglomerative clustering
