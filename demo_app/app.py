@@ -132,7 +132,7 @@ if 'user_pred_agg' not in st.session_state:
 #################################################################################
 ### Predicting to which cluster user data belongs to
 ## Submit button to create new row
-if st.button(':orange[Go fetch, Beander!]'):
+if st.button(':orange[Go fetch, Beander!]', type='secondary'):
     user_row = {'Aroma': aroma_values,
                 'Aftertaste': aftertaste_values,
                 'Acidity': acidity_values,
