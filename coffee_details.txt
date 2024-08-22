@@ -41,4 +41,4 @@ X	Certification.Body
 -	unit_of_measurement    Pour l'altitude  (metrique ou imperial)
 -	altitude_low_meters    Plus basse altitude
 -	altitude_high_meters   plus haute altitude
-X	altitude_mean_meters   altitude moyenne
+X	altitude_mean_meters   altitude moyenne   
