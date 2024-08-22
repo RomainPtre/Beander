@@ -7,6 +7,7 @@ import joblib as jb
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import euclidean_distances
+from scipy.cluster.hierarchy import dendrogram, linkage
 
 
 ### Config
@@ -51,7 +52,7 @@ numeric_cols_agg = data_agg[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetnes
 # numeric_cols_agg.iloc[-1] = user_row
 scaler_agg = StandardScaler()
 features_scaled_agg = scaler_agg.fit_transform(numeric_cols_agg) # Only for PCA visualizations
-knn = jb.load('./src/models/knn.pkl')
+knn = jb.load('./src/models/knn_5.pkl')
 
 ## DISTANCES
 ## Euclidean distance pipeline
