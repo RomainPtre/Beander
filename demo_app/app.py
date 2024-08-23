@@ -18,7 +18,7 @@ st.set_page_config(
     layout="wide"
 )
 
-DATA = ('./src/Coffee_dataset_cleaned_column_and_rows.csv')
+DATA = ('./demo_app/src/Coffee_dataset_cleaned_column_and_rows.csv')
 
 ### Headers
 st.title('Welcome to Beander ☕')
@@ -45,7 +45,7 @@ numeric_cols = data[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetness']]  # 
 ## Kmeans pipeline
 scaler_kmeans = StandardScaler()
 features_scaled_kmeans = scaler_kmeans.fit_transform(numeric_cols) # Only for PCA visualizations
-kmeans = jb.load('./src/models/Kmeans.pkl')
+kmeans = jb.load('./demo_app/src/models/Kmeans.pkl')
 
 ## Agglomerative clustering pipeline
 # HAS TO BE AFTER USER INPUT
@@ -54,7 +54,7 @@ numeric_cols_agg = data_agg[['Aroma', 'Aftertaste', 'Acidity', 'Body', 'Sweetnes
 # numeric_cols_agg.iloc[-1] = user_row
 scaler_agg = StandardScaler()
 features_scaled_agg = scaler_agg.fit_transform(numeric_cols_agg) # Only for PCA visualizations
-knn = jb.load('./src/models/knn_5.pkl')
+knn = jb.load('./demo_app/src/models/knn_5.pkl')
 
 ## DISTANCES
 ## Euclidean distance pipeline
