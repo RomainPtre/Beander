@@ -4,7 +4,7 @@ https://beander.streamlit.app/
 
 This application will provide the user (e.g., coffee roasters) with recommendations of coffee producers (e.g., coffee farms) based on a composite aromatic profile that the user can draw interactively 🎨
 
-![dashboard](https://github.com/user-attachments/assets/3da30cae-5abd-4eae-9374-76011f23af0e)
+![app](https://github.com/user-attachments/assets/a9bb6890-ed16-45e9-828a-963ce3ff4d21)
 
 ## 1) Main objectives of the project
 
